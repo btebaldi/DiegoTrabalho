@@ -196,23 +196,14 @@ SIH.Value$Data <- as.Date(SIH.Value$Data)
 SIA.Value$Data <- as.Date(SIA.Value$Data)
 
 
-SIH %<>% select(c("Data", "Regiao_Norte", "Regiao_Nordeste", "Regiao_CentroOeste", "Regiao_Sudeste", "Regiao_Sul"))
-SIA %<>% select(c("Data", "Regiao_Norte", "Regiao_Nordeste", "Regiao_CentroOeste", "Regiao_Sudeste", "Regiao_Sul"))
-SIH.Value %<>% select(c("Data", "Regiao_Norte", "Regiao_Nordeste", "Regiao_CentroOeste", "Regiao_Sudeste", "Regiao_Sul"))
-SIA.Value %<>% select(c("Data", "Regiao_Norte", "Regiao_Nordeste", "Regiao_CentroOeste", "Regiao_Sudeste", "Regiao_Sul"))
+tbl_qtd <- SIA %>%
+  bind_rows(SIH) %>% 
+  group_by(Data) %>%
+  summarise_all(.funs = sum, na.rm=TRUE)
 
-
-# SIH %<>% mutate(Data = as.Date(Data), DB = "SIH")
-# SIA %<>% mutate(Data = as.Date(Data), DB = "SIA")
-
-tbl_qtd <- SIA %>% bind_rows(SIH) %>% group_by(Data) %>% summarise_all(.funs = sum, na.rm=TRUE)
-
-IPCA.last <- IPCA %>% filter(Data == "2021-01-01") %>% pull(IPCA)
-
-# SIH.Value %>%
-#   inner_join(IPCA, by = c("Data"="Data")) %>% 
-#   mutate(fator = IPCA.last/IPCA,
-#          Total_Brasil2 = Total_Brasil * fator )
+IPCA.last <- IPCA %>% 
+  filter(Data == "2021-01-01") %>%
+  pull(IPCA)
 
 tbl_value <- SIA.Value %>% 
   bind_rows(SIH.Value) %>%
@@ -229,92 +220,316 @@ tbl_value <- SIA.Value %>%
 
 
 ggplot(tbl_qtd) + 
-  geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
-  geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
-  geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
-  geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
-  geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
-  labs()
+  # geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
+  # geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
+  # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
+  # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
+  # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
+  geom_line(aes(x=Data, y=Total_Brasil, colour = "Total_Brasil")) +
+  labs(title = "Quantidade")
 
 ggplot(tbl_value) + 
-  geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
-  geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
-  geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
-  geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
-  geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
-  labs()
+  # geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
+  # geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
+  # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
+  # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
+  # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
+  geom_line(aes(x=Data, y=Total_Brasil, colour = "Total_Brasil")) +
+  labs(title = "Valor")
 
+# Passa o log -------------------------------------------------------------
 
-tbl_qtd %>%
-  mutate(BR = Regiao_Norte + Regiao_Nordeste + Regiao_CentroOeste + Regiao_Sudeste + Regiao_Sul) %>% 
-  Testa.RaizUnitaria(critical = "5pct")
+tbl_qtd <- tbl_qtd %>%
+  mutate(ln.Br = log(Total_Brasil))
 
-tbl_value %>%
-  mutate(BR = Regiao_Norte + Regiao_Nordeste + Regiao_CentroOeste + Regiao_Sudeste + Regiao_Sul) %>% 
-  Testa.RaizUnitaria(critical = "5pct")
+tbl_value <- tbl_value %>%
+  mutate(ln.Br = log(Total_Brasil))
 
-tbl_qtd %<>%
-  mutate(BR = Regiao_Norte + Regiao_Nordeste + Regiao_CentroOeste + Regiao_Sudeste + Regiao_Sul,
-         Pandemia1 = if_else(Data == as.Date("2020-03-01"), true = 1, false = 0), 
-         Pandemia2 = if_else(Data >= as.Date("2020-03-01"), true = 1, false = 0))
+# Testa Raiz Unitaria -----------------------------------------------------
 
-tbl_value %<>%
-  mutate(BR = Regiao_Norte + Regiao_Nordeste + Regiao_CentroOeste + Regiao_Sudeste + Regiao_Sul,
-         Pandemia1 = if_else(Data == as.Date("2020-03-01"), true = 1, false = 0), 
-         Pandemia2 = if_else(Data >= as.Date("2020-03-01"), true = 1, false = 0))
+tbl <- tbl_qtd %>% 
+  select(Data,
+         Qtd = Total_Brasil,
+         ln.Qtd = ln.Br) %>% 
+  inner_join(tbl_value, by = c("Data")) %>% 
+  select(Data,
+         Qtd, ln.Qtd, 
+         Value = Total_Brasil,
+         ln.Value = ln.Br)
 
-
-tbl_qtd %>%
-  filter(Pandemia2 == 0) %>% 
+tbl %>% 
   Testa.RaizUnitaria(critical = "1pct")
 
-Y <- tbl_qtd %>% filter(Pandemia2 == 0) %>% pull(BR)
-acf(Y, 24)
-pacf(Y, 24)
 
-for (i in 12:1) {
-  mdl <- arima(Y,
-               order = c(i, 0, 0))  
+
+# Adiciona dummies de pandemia --------------------------------------------
+
+tbl %<>%
+  mutate(Pandemia1 = if_else(Data == as.Date("2020-03-01"), true = 1, false = 0), 
+         Pandemia2 = if_else(Data >= as.Date("2020-03-01"), true = 1, false = 0))
+
+
+# Analise de efeito da pandemia no valor ----------------------------------
+plot(tbl)
+tbl <- tbl %>% mutate(trend = row_number())
+
+ols <- lm(Value ~ -1 + Qtd + Pandemia1 + Pandemia2 + trend, data = tbl)
+
+summary(ols)
+
+
+ols <- lm(ln.Value ~ -1 + ln.Qtd + Pandemia1 + Pandemia2, data = tbl)
+
+summary(ols)
+
+ols <- lm(ln.Value ~ -1 + ln.Qtd * Pandemia2 + Pandemia1, data = tbl)
+
+summary(ols)
+
+
+
+# Analise de serie temporal das Quantidades -------------------------------
+
+
+Fteste <- function(model.u, model.r){
+  
+  # LR <- -2*(model.r$loglik - model.u$loglik)
+  
+  q <- dim(model.u$var.coef)[1] - dim(model.r$var.coef)[1]
+  n <- length(model.u$residuals) - dim(model.u$var.coef)[1]
+  
+  f.stat <- ((sum(model.r$residuals^2) - sum(model.u$residuals^2))/q)/(sum(model.u$residuals^2)/n)
+  return(pf(f.stat, q, n, lower.tail = FALSE))
+}
+
+
+
+tbl2 <- tbl %>% filter(Pandemia2 == 0)
+
+mdl <- arima(tbl2$Qtd,
+                order = c(0, 0, 0),
+                # xreg = data.matrix(tbl[ , c("Pandemia1", "Pandemia2")]),
+                # method = "ML",
+                # fixed = c(NA, NA, NA,
+                #           0, 0, 0,
+                #           0, 0, NA,
+                #           0, NA, NA,
+                #           NA, NA, NA)
+                transform.pars = TRUE)
+
+acf(mdl$residuals, 36)
+pacf(mdl$residuals, 36)
+mdl
+a <- abs(mdl$coef[colnames(mdl$var.coef)]/diag(mdl$var.coef)^0.5)
+a
+which.min(a)
+# Fteste(model.u = mdl.12, model.r = mdl)
+mdl
+
+
+
+
+for (i in 15:1) {
+  mdl <- arima(tbl2$Qtd,
+               order = c(i, 0, 0),
+               transform.pars = FALSE)  
   
   assign(x = sprintf("mdl.%d", i), 
          value = mdl)
 }
 
 
-AIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
-BIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+tbl.aic <- AIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+tbl.bic <- BIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+
+tbl.aic[which.min(tbl.aic$AIC),]
+tbl.bic[which.min(tbl.bic$BIC),]
+
+abs(mdl.3$coef[colnames(mdl.3$var.coef)]/diag(mdl.3$var.coef)^0.5)
+
+acf(mdl.11$residuals, 36)
+pacf(mdl.11$residuals, 36)
+
+abs(mdl.11$coef[colnames(mdl.11$var.coef)]/diag(mdl.11$var.coef)^0.5)
 
 
-mdl.12$coef/diag(mdl.12$var.coef)^0.5
+mdl.11r <- arima(tbl2$Qtd,
+             order = c(11, 0, 0),
+             fixed = c(NA, NA, NA,
+                       0, 0, 0,
+                       NA, NA, 0,
+                       0, NA, NA),
+             # method = "ML",
+             transform.pars = FALSE)  
+abs(mdl.11r$coef[colnames(mdl.11r$var.coef)]/diag(mdl.11r$var.coef)^0.5)
 
-mdl <- arima(Y,
-             order = c(12, 0, 0),
-             fixed = c(NA, NA, NA, 0, 0, 0, NA, NA, 0, 0, NA, 0, NA))
-
-abs(mdl$coef[colnames(mdl$var.coef)]/diag(mdl$var.coef)^0.5)
-
-length(mdl.12$residuals)-(length(colnames(mdl.12$var.coef)) - length(colnames(mdl$var.coef)))
-((sum(mdl$residuals^2) - sum(mdl.12$residuals^2))/((length(colnames(mdl.12$var.coef)) - length(colnames(mdl$var.coef)))))/(sum(mdl.12$residuals^2) /(length(mdl.12$residuals)-(length(colnames(mdl.12$var.coef))))) 
-
-pred <- predict(mdl.12, n.ahead = 22)
-pred <- predict(mdl, n.ahead = 22)
-
-tbl_qtd$Prev <- NA
-tbl_qtd$Prev[tbl_qtd$Pandemia2 == 1] <- pred$pred
-
-tbl_qtd$PrevUpper <- NA
-tbl_qtd$PrevUpper[tbl_qtd$Pandemia2 == 1] <- pred$pred + pred$se * 1
-
-tbl_qtd$PrevLower <- NA
-tbl_qtd$PrevLower[tbl_qtd$Pandemia2 == 1] <- pred$pred - pred$se * 1
+Fteste(model.u = mdl.11, model.r = mdl.11r)
 
 
-ggplot(tbl_qtd) + 
-  geom_line(aes(x=Data, y=BR)) + 
-  geom_ribbon(aes(x=Data, ymax=PrevUpper, ymin = PrevLower),
+pred.1 <- predict(mdl.1, n.ahead = 22)
+pred.3 <- predict(mdl.11r, n.ahead = 22)
+
+mean(pred.3$pred)
+
+tbl$Prev1 <- tbl$Qtd
+tbl$Prev3 <- tbl$Qtd
+
+tbl$Prev1[tbl$Pandemia2 == 1] <- pred.1$pred
+tbl$Prev3[tbl$Pandemia2 == 1] <- pred.3$pred
+
+tbl$Prev.1Upper <- NA
+tbl$Prev.1Upper[tbl$Pandemia2 == 1] <- pred.1$pred + pred.1$se * 1
+
+tbl$Prev.1Lower <- NA
+tbl$Prev.1Lower[tbl$Pandemia2 == 1] <- pred.1$pred - pred.1$se * 1
+
+tbl$Prev.3Upper <- NA
+tbl$Prev.3Upper[tbl$Pandemia2 == 1] <- pred.3$pred + pred.3$se * 1.95
+
+tbl$Prev.3Lower <- NA
+tbl$Prev.3Lower[tbl$Pandemia2 == 1] <- pred.3$pred - pred.3$se * 1.95
+
+
+
+ggplot(tbl) + 
+  # geom_line(aes(x=Data, y=Qtd)) + 
+  geom_ribbon(aes(x=Data, ymax=Prev.1Upper, ymin = Prev.1Lower),
               fill = "Blue",
               alpha = 0.3) +
-  geom_line(aes(x=Data, y=Prev), colour = "Red", linetype = "solid") + 
+  geom_line(aes(x=Data, y=Prev1), colour = "Red", linetype = "solid") + 
   labs(title = "Procedimentos hospitalares do SUS",
        subtitle = "AIH aprovadas")
 
+ggplot(tbl) + 
+  # geom_line(aes(x=Data, y=Qtd)) + 
+  geom_ribbon(aes(x=Data, ymax=Prev.3Upper, ymin = Prev.3Lower),
+              fill = "Blue",
+              alpha = 0.3) +
+  geom_line(aes(x=Data, y=Prev3), colour = "Red", linetype = "solid") + 
+  labs(title = "Procedimentos hospitalares do SUS",
+       subtitle = "AIH aprovadas")
+
+
+
+
+
+
+
+
+
+
+
+
+# ANALISE DO VALOR  -------------------------------------------------------
+
+
+for (i in 12:1) {
+  mdl <- arima(tbl2$ln.Value,
+               order = c(i, 0, 0),
+               transform.pars = FALSE)  
+  
+  assign(x = sprintf("mdl.%d", i), 
+         value = mdl)
+}
+
+
+tbl.aic <- AIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+tbl.bic <- BIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+
+tbl.aic[which.min(tbl.aic$AIC),]
+tbl.bic[which.min(tbl.bic$BIC),]
+
+abs(mdl.3$coef[colnames(mdl.3$var.coef)]/diag(mdl.3$var.coef)^0.5)
+
+acf(mdl.11$residuals, 36)
+pacf(mdl.11$residuals, 36)
+
+abs(mdl.11$coef[colnames(mdl.11$var.coef)]/diag(mdl.11$var.coef)^0.5)
+
+
+mdl.11r <- arima(tbl2$ln.Value,
+                 order = c(11, 0, 0),
+                 fixed = c(NA, NA, NA,
+                           0, 0, 0,
+                           NA, NA, 0,
+                           0, NA, NA),
+                 # method = "ML",
+                 transform.pars = FALSE)  
+abs(mdl.11r$coef[colnames(mdl.11r$var.coef)]/diag(mdl.11r$var.coef)^0.5)
+
+Fteste(model.u = mdl.11, model.r = mdl.11r)
+
+
+pred.1 <- predict(mdl.1, n.ahead = 22)
+pred.3 <- predict(mdl.11r, n.ahead = 22)
+
+tbl$Prev1 <- tbl$ln.Value
+tbl$Prev3 <- tbl$ln.Value
+
+tbl$Prev1[tbl$Pandemia2 == 1] <- pred.1$pred
+tbl$Prev3[tbl$Pandemia2 == 1] <- pred.3$pred
+
+tbl$Prev.1Upper <- NA
+tbl$Prev.1Upper[tbl$Pandemia2 == 1] <- pred.1$pred + pred.1$se * 1
+
+tbl$Prev.1Lower <- NA
+tbl$Prev.1Lower[tbl$Pandemia2 == 1] <- pred.1$pred - pred.1$se * 1
+
+tbl$Prev.3Upper <- NA
+tbl$Prev.3Upper[tbl$Pandemia2 == 1] <- pred.3$pred + pred.3$se * 1.95
+
+tbl$Prev.3Lower <- NA
+tbl$Prev.3Lower[tbl$Pandemia2 == 1] <- pred.3$pred - pred.3$se * 1.95
+
+
+
+ggplot(tbl) + 
+  # geom_line(aes(x=Data, y=Qtd)) + 
+  geom_ribbon(aes(x=Data, ymax=Prev.1Upper, ymin = Prev.1Lower),
+              fill = "Blue",
+              alpha = 0.3) +
+  geom_line(aes(x=Data, y=Prev1), colour = "Red", linetype = "solid") + 
+  labs(title = "Procedimentos hospitalares do SUS",
+       subtitle = "AIH aprovadas")
+
+ggplot(tbl) + 
+  # geom_line(aes(x=Data, y=Qtd)) + 
+  geom_ribbon(aes(x=Data, ymax=Prev.3Upper, ymin = Prev.3Lower),
+              fill = "Blue",
+              alpha = 0.3) +
+  geom_line(aes(x=Data, y=Prev3), colour = "Red", linetype = "solid") + 
+  labs(title = "Procedimentos hospitalares do SUS",
+       subtitle = "AIH aprovadas")
+
+
+
+
+# Analise pos pandemia ----------------------------------------------------
+
+mdl.11rf <- arima(tbl$Qtd,
+                 order = c(11, 0, 0),
+                 fixed = c(NA, NA, NA,
+                           0, 0, 0,
+                           NA, NA, 0,
+                           0, NA, NA, 0, NA),
+                 xreg = tbl[, c("Pandemia1", "Pandemia2")],
+                 # method = "ML",
+                 transform.pars = FALSE)  
+
+mdl.11rf
+
+abs(mdl.11rf$coef[colnames(mdl.11rf$var.coef)]/diag(mdl.11rf$var.coef)^0.5)
+
+
+
+mdl.11rf <- arima(tbl$ln.Value,
+                  order = c(11, 0, 0),
+                  fixed = c(NA, NA, NA,
+                            0, 0, 0,
+                            NA, NA, 0,
+                            0, NA, NA, 0, NA),
+                  xreg = tbl[, c("Pandemia1", "Pandemia2")],
+                  # method = "ML",
+                  transform.pars = FALSE)  
+
+mdl.11rf
