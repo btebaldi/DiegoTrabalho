@@ -202,7 +202,7 @@ tbl_qtd <- SIA %>%
   summarise_all(.funs = sum, na.rm=TRUE)
 
 IPCA.last <- IPCA %>% 
-  filter(Data == "2021-01-01") %>%
+  filter(Data == "2021-12-01") %>%
   pull(IPCA)
 
 tbl_value <- SIA.Value %>% 
@@ -225,17 +225,55 @@ ggplot(tbl_qtd) +
   # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
   # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
   # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
-  geom_line(aes(x=Data, y=Total_Brasil, colour = "Total_Brasil")) +
-  labs(title = "Quantidade")
+  geom_line(aes(x=Data, y=Total_Brasil, colour = "Atual")) +
+  labs(title = "Procedimentos hospitalares e Produção Ambulatorial",
+       subtitle = "SIH e SIA",
+       x=NULL,
+       y="Qtd. Aprovada",
+       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
+       colour = NULL) +
+  theme_bw() +
+  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
+                     values = c("#000000", "#FF0000", "#0000FF")) + 
+  theme(legend.position = "bottom")
 
-ggplot(tbl_value) + 
+ggsave(filename = "Atual SIA_SIH.png",
+       plot = g1,
+       units = "in",
+       width = 8, height = 6,
+       dpi = 100)
+
+
+g2 <- ggplot(tbl_value) + 
   # geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
   # geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
   # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
   # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
   # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
   geom_line(aes(x=Data, y=Total_Brasil, colour = "Total_Brasil")) +
-  labs(title = "Valor")
+  geom_line(aes(x=Data, y=Total_Brasil, colour = "Atual")) +
+  labs(title = "valor financeiro aprovado referente a cirurgias de catarata",
+       subtitle = "Nível de preço de Dezembro de 2021",
+       x=NULL,
+       y="Milhões [R$]",
+       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
+       colour = NULL) +
+  theme_bw() +
+  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
+                     values = c("#000000", "#FF0000", "#0000FF")) + 
+  scale_x_date(breaks = seq(from = as.Date("2008-01-01"), to = as.Date("2022-01-01"), by="year"), 
+               labels = 2008:2022) + 
+  scale_y_continuous(breaks = seq(from = 1e7, to = 7e7, by=1e7), 
+                     labels = sprintf("%d", seq(from = 1e7, to = 7e7, by=1e7)/1000000)) + 
+  theme(legend.position = "none")
+
+
+ggsave(filename = "Valor financeiro cirurgia.png",
+       plot = g2,
+       units = "in",
+       width = 8, height = 6,
+       dpi = 100)
+
 
 # Passa o log -------------------------------------------------------------
 
@@ -268,6 +306,10 @@ tbl %<>%
   mutate(Pandemia1 = if_else(Data == as.Date("2020-03-01"), true = 1, false = 0), 
          Pandemia2 = if_else(Data >= as.Date("2020-03-01"), true = 1, false = 0))
 
+
+summary(tbl)
+sd(tbl$Qtd)
+sd(tbl$Value)
 
 # Analise de efeito da pandemia no valor ----------------------------------
 plot(tbl)
@@ -307,15 +349,15 @@ Fteste <- function(model.u, model.r){
 tbl2 <- tbl %>% filter(Pandemia2 == 0)
 
 mdl <- arima(tbl2$Qtd,
-                order = c(0, 0, 0),
-                # xreg = data.matrix(tbl[ , c("Pandemia1", "Pandemia2")]),
-                # method = "ML",
-                # fixed = c(NA, NA, NA,
-                #           0, 0, 0,
-                #           0, 0, NA,
-                #           0, NA, NA,
-                #           NA, NA, NA)
-                transform.pars = TRUE)
+             order = c(0, 0, 0),
+             # xreg = data.matrix(tbl[ , c("Pandemia1", "Pandemia2")]),
+             # method = "ML",
+             # fixed = c(NA, NA, NA,
+             #           0, 0, 0,
+             #           0, 0, NA,
+             #           0, NA, NA,
+             #           NA, NA, NA)
+             transform.pars = TRUE)
 
 acf(mdl$residuals, 36)
 pacf(mdl$residuals, 36)
@@ -354,28 +396,27 @@ abs(mdl.11$coef[colnames(mdl.11$var.coef)]/diag(mdl.11$var.coef)^0.5)
 
 
 mdl.11r <- arima(tbl2$Qtd,
-             order = c(11, 0, 0),
-             fixed = c(NA, NA, NA,
-                       0, 0, 0,
-                       NA, NA, 0,
-                       0, NA, NA),
-             # method = "ML",
-             transform.pars = FALSE)  
+                 order = c(11, 0, 0),
+                 fixed = c(NA, NA, NA,
+                           0, 0, 0,
+                           NA, NA, 0,
+                           0, NA, NA),
+                 # method = "ML",
+                 transform.pars = FALSE)  
 abs(mdl.11r$coef[colnames(mdl.11r$var.coef)]/diag(mdl.11r$var.coef)^0.5)
 
 Fteste(model.u = mdl.11, model.r = mdl.11r)
 
 
-pred.1 <- predict(mdl.1, n.ahead = 22)
-pred.3 <- predict(mdl.11r, n.ahead = 22)
+pred.11r <- predict(mdl.11r, n.ahead = 22)
 
-mean(pred.3$pred)
+mean(pred.11r$pred)
 
 tbl$Prev1 <- tbl$Qtd
 tbl$Prev3 <- tbl$Qtd
 
 tbl$Prev1[tbl$Pandemia2 == 1] <- pred.1$pred
-tbl$Prev3[tbl$Pandemia2 == 1] <- pred.3$pred
+tbl$Prev3[tbl$Pandemia2 == 1] <- pred.11r$pred
 
 tbl$Prev.1Upper <- NA
 tbl$Prev.1Upper[tbl$Pandemia2 == 1] <- pred.1$pred + pred.1$se * 1
@@ -384,10 +425,10 @@ tbl$Prev.1Lower <- NA
 tbl$Prev.1Lower[tbl$Pandemia2 == 1] <- pred.1$pred - pred.1$se * 1
 
 tbl$Prev.3Upper <- NA
-tbl$Prev.3Upper[tbl$Pandemia2 == 1] <- pred.3$pred + pred.3$se * 1.95
+tbl$Prev.3Upper[tbl$Pandemia2 == 1] <- pred.11r$pred + pred.11r$se * 1.95
 
 tbl$Prev.3Lower <- NA
-tbl$Prev.3Lower[tbl$Pandemia2 == 1] <- pred.3$pred - pred.3$se * 1.95
+tbl$Prev.3Lower[tbl$Pandemia2 == 1] <- pred.11r$pred - pred.11r$se * 1.95
 
 
 
@@ -400,23 +441,32 @@ ggplot(tbl) +
   labs(title = "Procedimentos hospitalares do SUS",
        subtitle = "AIH aprovadas")
 
-ggplot(tbl) + 
-  # geom_line(aes(x=Data, y=Qtd)) + 
-  geom_ribbon(aes(x=Data, ymax=Prev.3Upper, ymin = Prev.3Lower),
-              fill = "Blue",
-              alpha = 0.3) +
-  geom_line(aes(x=Data, y=Prev3), colour = "Red", linetype = "solid") + 
-  labs(title = "Procedimentos hospitalares do SUS",
-       subtitle = "AIH aprovadas")
+range(tbl$Data)
+g1 <- ggplot(tbl) + 
+  geom_ribbon(aes(x=Data, ymax=Prev.3Upper, ymin = Prev.3Lower), fill = "Blue",
+              alpha = 0.2) +
+  geom_line(aes(x=Data, y=Prev3, colour = "Previsão"), linetype = "solid") + 
+  geom_line(aes(x=Data, y=Qtd, colour = "Atual")) + 
+  theme_bw() +
+  labs(title = "Cirurgias de catarata",
+       subtitle = "Previsão de SIH e SIA",
+       x=NULL,
+       y="Qtd. Aprovada",
+       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
+       colour = NULL) +
+  scale_color_manual(breaks = c("Atual", "Previsão", "Teo"),
+                     values = c("#000000", "#FF0000", "#0000FF")) + 
+  scale_x_date(breaks = seq(from = as.Date("2008-01-01"), to = as.Date("2022-01-01"), by="year"), 
+               labels = 2008:2022) + 
+  theme(legend.position = "bottom")
 
+g1
 
-
-
-
-
-
-
-
+ggsave(filename = "Previsao SIA_SIH.png",
+       plot = g1,
+       units = "in",
+       width = 8, height = 6,
+       dpi = 100)
 
 
 
@@ -507,14 +557,14 @@ ggplot(tbl) +
 # Analise pos pandemia ----------------------------------------------------
 
 mdl.11rf <- arima(tbl$Qtd,
-                 order = c(11, 0, 0),
-                 fixed = c(NA, NA, NA,
-                           0, 0, 0,
-                           NA, NA, 0,
-                           0, NA, NA, 0, NA),
-                 xreg = tbl[, c("Pandemia1", "Pandemia2")],
-                 # method = "ML",
-                 transform.pars = FALSE)  
+                  order = c(11, 0, 0),
+                  fixed = c(NA, NA, NA,
+                            0, 0, 0,
+                            NA, NA, 0,
+                            0, NA, NA, 0, NA),
+                  xreg = tbl[, c("Pandemia1", "Pandemia2")],
+                  # method = "ML",
+                  transform.pars = FALSE)  
 
 mdl.11rf
 
