@@ -273,12 +273,12 @@ tbl %<>%
 plot(tbl)
 tbl <- tbl %>% mutate(trend = row_number())
 
-ols <- lm(Value ~ -1 + Qtd + Pandemia1 + Pandemia2 + trend, data = tbl)
+ols <- lm(ln.Value ~ -1 + ln.Qtd*Pandemia2 + trend, data = tbl)
 
 summary(ols)
 
 
-ols <- lm(ln.Value ~ -1 + ln.Qtd + Pandemia1 + Pandemia2, data = tbl)
+ols <- lm(Value ~ -1 + Qtd * Pandemia2 , data = tbl)
 
 summary(ols)
 
@@ -365,6 +365,7 @@ abs(mdl.11r$coef[colnames(mdl.11r$var.coef)]/diag(mdl.11r$var.coef)^0.5)
 
 Fteste(model.u = mdl.11, model.r = mdl.11r)
 
+mdl.11r
 
 pred.1 <- predict(mdl.1, n.ahead = 22)
 pred.3 <- predict(mdl.11r, n.ahead = 22)
@@ -423,26 +424,28 @@ ggplot(tbl) +
 # ANALISE DO VALOR  -------------------------------------------------------
 
 
-for (i in 12:1) {
+for (i in 12:0) {
   mdl <- arima(tbl2$ln.Value,
                order = c(i, 0, 0),
-               transform.pars = FALSE)  
+               # method = "CSS",
+               # SSinit = "Rossignol2011",
+               transform.pars = FALSE, xreg = tbl2[, c("ln.Qtd")])
   
   assign(x = sprintf("mdl.%d", i), 
          value = mdl)
 }
 
 
-tbl.aic <- AIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
-tbl.bic <- BIC(mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+tbl.aic <- AIC(mdl.0, mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
+tbl.bic <- BIC(mdl.0, mdl.1, mdl.2, mdl.3, mdl.4, mdl.5, mdl.6, mdl.7, mdl.8, mdl.9, mdl.10, mdl.11, mdl.12)
 
 tbl.aic[which.min(tbl.aic$AIC),]
 tbl.bic[which.min(tbl.bic$BIC),]
 
-abs(mdl.3$coef[colnames(mdl.3$var.coef)]/diag(mdl.3$var.coef)^0.5)
+abs(mdl.1$coef[colnames(mdl.3$var.coef)]/diag(mdl.3$var.coef)^0.5)
 
-acf(mdl.11$residuals, 36)
-pacf(mdl.11$residuals, 36)
+acf(mdl.1$residuals, 36)
+pacf(mdl.1$residuals, 36)
 
 abs(mdl.11$coef[colnames(mdl.11$var.coef)]/diag(mdl.11$var.coef)^0.5)
 
@@ -506,7 +509,7 @@ ggplot(tbl) +
 
 # Analise pos pandemia ----------------------------------------------------
 
-mdl.11rf <- arima(tbl$Qtd,
+mdl.11rf <- arima(tbl$ln.Qtd,
                  order = c(11, 0, 0),
                  fixed = c(NA, NA, NA,
                            0, 0, 0,
@@ -523,13 +526,17 @@ abs(mdl.11rf$coef[colnames(mdl.11rf$var.coef)]/diag(mdl.11rf$var.coef)^0.5)
 
 
 mdl.11rf <- arima(tbl$ln.Value,
-                  order = c(11, 0, 0),
-                  fixed = c(NA, NA, NA,
-                            0, 0, 0,
-                            NA, NA, 0,
-                            0, NA, NA, 0, NA),
-                  xreg = tbl[, c("Pandemia1", "Pandemia2")],
+                  order = c(1, 0, 0),
+                  # fixed = c(NA, NA, NA,
+                  #           0, 0, 0,
+                  #           NA, NA, 0,
+                  #           0, NA, NA, 0, NA),
+                  xreg = tbl[, c("ln.Qtd", "Pandemia1", "Pandemia2")],
                   # method = "ML",
                   transform.pars = FALSE)  
 
 mdl.11rf
+acf(mdl.11rf$residuals)
+pacf(mdl.11rf$residuals)
+
+
