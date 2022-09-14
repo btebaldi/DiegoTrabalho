@@ -219,62 +219,6 @@ tbl_value <- SIA.Value %>%
   select(-fator, - IPCA)
 
 
-ggplot(tbl_qtd) + 
-  # geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
-  # geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
-  # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
-  # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
-  # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
-  geom_line(aes(x=Data, y=Total_Brasil, colour = "Atual")) +
-  labs(title = "Procedimentos hospitalares e Produção Ambulatorial",
-       subtitle = "SIH e SIA",
-       x=NULL,
-       y="Qtd. Aprovada",
-       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
-       colour = NULL) +
-  theme_bw() +
-  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
-                     values = c("#000000", "#FF0000", "#0000FF")) + 
-  theme(legend.position = "bottom")
-
-ggsave(filename = "Atual SIA_SIH.png",
-       plot = g1,
-       units = "in",
-       width = 8, height = 6,
-       dpi = 100)
-
-
-g2 <- ggplot(tbl_value) + 
-  # geom_line(aes(x=Data, y=Regiao_Norte, colour = "Regiao_Norte")) +
-  # geom_line(aes(x=Data, y=Regiao_Nordeste, colour = "Regiao_Nordeste")) +
-  # geom_line(aes(x=Data, y=Regiao_CentroOeste, colour = "Regiao_CentroOeste")) +
-  # geom_line(aes(x=Data, y=Regiao_Sudeste, colour = "Regiao_Sudeste")) +
-  # geom_line(aes(x=Data, y=Regiao_Sul, colour = "Regiao_Sul")) +
-  geom_line(aes(x=Data, y=Total_Brasil, colour = "Total_Brasil")) +
-  geom_line(aes(x=Data, y=Total_Brasil, colour = "Atual")) +
-  labs(title = "valor financeiro aprovado referente a cirurgias de catarata",
-       subtitle = "Nível de preço de Dezembro de 2021",
-       x=NULL,
-       y="Milhões [R$]",
-       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
-       colour = NULL) +
-  theme_bw() +
-  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
-                     values = c("#000000", "#FF0000", "#0000FF")) + 
-  scale_x_date(breaks = seq(from = as.Date("2008-01-01"), to = as.Date("2022-01-01"), by="year"), 
-               labels = 2008:2022) + 
-  scale_y_continuous(breaks = seq(from = 1e7, to = 7e7, by=1e7), 
-                     labels = sprintf("%d", seq(from = 1e7, to = 7e7, by=1e7)/1000000)) + 
-  theme(legend.position = "none")
-
-
-ggsave(filename = "Valor financeiro cirurgia.png",
-       plot = g2,
-       units = "in",
-       width = 8, height = 6,
-       dpi = 100)
-
-
 # Passa o log -------------------------------------------------------------
 
 tbl_qtd <- tbl_qtd %>%
@@ -282,6 +226,7 @@ tbl_qtd <- tbl_qtd %>%
 
 tbl_value <- tbl_value %>%
   mutate(ln.Br = log(Total_Brasil))
+
 
 # Testa Raiz Unitaria -----------------------------------------------------
 
@@ -298,6 +243,60 @@ tbl <- tbl_qtd %>%
 tbl %>% 
   Testa.RaizUnitaria(critical = "1pct")
 
+rm(list = c("file.name", "IPCA", "IPCA.last", "SIA", "SIA.Value", "SIH", 
+            "SIH.Value", "tbl_qtd", "tbl_value"))
+
+
+# Graficos ----------------------------------------------------------------
+
+
+g1 <- ggplot(tbl) + 
+  geom_line(aes(x=Data, y=Qtd, colour = "Atual")) +
+  labs(title = "Procedimentos hospitalares e Produção Ambulatorial",
+       subtitle = "SIH e SIA",
+       x=NULL,
+       y="Qtd. Aprovada",
+       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
+       colour = NULL) +
+  theme_bw() +
+  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
+                     values = c("#000000", "#FF0000", "#0000FF")) + 
+  theme(legend.position = "bottom")
+
+g1
+
+ggsave(filename = "Atual SIA_SIH.png",
+       plot = g1,
+       units = "in",
+       width = 8, height = 6,
+       dpi = 100)
+
+
+g2 <- ggplot(tbl) + 
+  geom_line(aes(x=Data, y=Value, colour = "Atual")) +
+  labs(title = "Valor financeiro aprovado referente a cirurgias de catarata",
+       subtitle = "Nível de preço de Dezembro de 2021",
+       x=NULL,
+       y="Milhões [R$]",
+       caption = "Fonte: Ministério da Saúde (SIA/SUS e SIH/SUS)", 
+       colour = NULL) +
+  theme_bw() +
+  scale_color_manual(breaks = c("Atual", "Previsao", "Teo"),
+                     values = c("#000000", "#FF0000", "#0000FF")) + 
+  scale_x_date(breaks = seq(from = as.Date("2008-01-01"), to = as.Date("2022-01-01"), by="year"), 
+               labels = 2008:2022) + 
+  scale_y_continuous(breaks = seq(from = 1e7, to = 7e7, by=1e7), 
+                     labels = sprintf("%d", seq(from = 1e7, to = 7e7, by=1e7)/1000000)) + 
+  theme(legend.position = "none")
+
+g2
+
+ggsave(filename = "Valor financeiro cirurgia.png",
+       plot = g2,
+       units = "in",
+       width = 8, height = 6,
+       dpi = 100)
+
 
 
 # Adiciona dummies de pandemia --------------------------------------------
@@ -312,21 +311,81 @@ sd(tbl$Qtd)
 sd(tbl$Value)
 
 # Analise de efeito da pandemia no valor ----------------------------------
-plot(tbl)
-tbl <- tbl %>% mutate(trend = row_number())
+tbl %>% select(Qtd, ln.Qtd, Value, ln.Value) %>% plot()
 
-ols <- lm(ln.Value ~ -1 + ln.Qtd*Pandemia2 + trend, data = tbl)
+tbl <- tbl %>% mutate(Year.fc = factor(year(Data), levels = 2008:2021,
+                                       labels = c("2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2009-2016",
+                                                  "2017-2019",
+                                                  "2017-2019",
+                                                  "2017-2019",
+                                                  "2020-2021",
+                                                  "2020-2021")))
+
+ggplot(tbl) + 
+  geom_point(aes(x=Qtd, y=Value, colour = Year.fc)) + 
+  # facet_wrap(~Year.fc, nrow = 3) +
+  theme_bw() + 
+  labs(colour=NULL) +
+  theme(legend.position = "bottom")
+
+tbl %>% 
+  mutate(I1 = if_else(Year.fc == "2009-2016", true = 1, false = 0),
+         I2 = if_else(Year.fc == "2017-2019", true = 1, false = 0),
+         I3 = if_else(Year.fc == "2020-2021", true = 1, false = 0)) %>% 
+  lm(Value ~ -1 + Qtd + I(Qtd*I2) + I(Qtd*I3), data = .) -> ols
 
 summary(ols)
 
 
-ols <- lm(Value ~ -1 + Qtd * Pandemia2 , data = tbl)
 
-summary(ols)
 
-ols <- lm(ln.Value ~ -1 + ln.Qtd * Pandemia2 + Pandemia1, data = tbl)
+# Analise pos pandemia ----------------------------------------------------
 
-summary(ols)
+mdl.11rf <- arima(tbl$Qtd,
+                  order = c(11, 0, 0),
+                  fixed = c(NA, NA, NA,
+                            0, 0, 0,
+                            NA, NA, 0,
+                            0, NA, NA, 0, NA),
+                  xreg = tbl[, c("Pandemia1", "Pandemia2")],
+                  # method = "ML",
+                  transform.pars = FALSE)  
+
+mdl.11rf
+
+abs(mdl.11rf$coef[colnames(mdl.11rf$var.coef)]/diag(mdl.11rf$var.coef)^0.5)
+
+length(mdl.11rf$residuals)
+
+mdl.11rf <- arima(tbl$ln.Value,
+                  order = c(1, 0, 0),
+                  # fixed = c(NA, NA, NA,
+                  #           0, 0, 0,
+                  #           NA, NA, 0,
+                  #           0, NA, NA, 0, NA),
+                  xreg = tbl[, c("ln.Qtd", "Pandemia1", "Pandemia2")],
+                  # method = "ML",
+                  transform.pars = FALSE)  
+
+mdl.11rf
+acf(mdl.11rf$residuals)
+pacf(mdl.11rf$residuals)
+
+
+
+
+
+
+
+
 
 
 
@@ -555,38 +614,5 @@ ggplot(tbl) +
        subtitle = "AIH aprovadas")
 
 
-
-
-# Analise pos pandemia ----------------------------------------------------
-
-mdl.11rf <- arima(tbl$Qtd,
-                  order = c(11, 0, 0),
-                  fixed = c(NA, NA, NA,
-                            0, 0, 0,
-                            NA, NA, 0,
-                            0, NA, NA, 0, NA),
-                  xreg = tbl[, c("Pandemia1", "Pandemia2")],
-                  # method = "ML",
-                  transform.pars = FALSE)  
-
-mdl.11rf
-
-abs(mdl.11rf$coef[colnames(mdl.11rf$var.coef)]/diag(mdl.11rf$var.coef)^0.5)
-
-
-
-mdl.11rf <- arima(tbl$ln.Value,
-                  order = c(1, 0, 0),
-                  # fixed = c(NA, NA, NA,
-                  #           0, 0, 0,
-                  #           NA, NA, 0,
-                  #           0, NA, NA, 0, NA),
-                  xreg = tbl[, c("ln.Qtd", "Pandemia1", "Pandemia2")],
-                  # method = "ML",
-                  transform.pars = FALSE)  
-
-mdl.11rf
-acf(mdl.11rf$residuals)
-pacf(mdl.11rf$residuals)
 
 
